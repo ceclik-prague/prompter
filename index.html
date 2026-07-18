@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Prompteur</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --text: #f2f0ea;
+    --accent: #d97757;
+    --muted: #8a8680;
+    --panel: #151412;
+    --border: #2a2825;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Georgia, 'Times New Roman', serif;
+    height: 100%;
+    overflow: hidden;
+  }
+  #controls {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 10;
+    font-family: -apple-system, Helvetica, Arial, sans-serif;
+    flex-wrap: wrap;
+  }
+  #controls.hidden { display: none; }
+  button {
+    background: var(--accent);
+    color: #1a1512;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  button:hover { opacity: 0.88; }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  label {
+    color: var(--muted);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stepper {
+    display: flex;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .stepper button {
+    background: transparent;
+    color: var(--accent);
+    border: none;
+    border-radius: 0;
+    padding: 4px 10px;
+    font-size: 15px;
+    line-height: 1;
+  }
+  .stepper button:hover { background: rgba(217,119,87,0.15); }
+  .stepper input {
+    width: 48px;
+    background: transparent;
+    color: var(--text);
+    border: none;
+    text-align: center;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 4px 0;
+  }
+  .stepper input::-webkit-outer-spin-button,
+  .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  #timer {
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    font-weight: 600;
+    margin-left: auto;
+  }
+  #scrollArea {
+    height: 100vh;
+    overflow-y: auto;
+    scroll-behavior: auto;
+    padding-top: 58px;
+  }
+  #scrollArea.controls-hidden { padding-top: 0; }
+  #textContent {
+    width: 65%;
+    max-width: 65%;
+    margin: 0 auto;
+    padding: 45vh 0 90vh 0;
+    font-size: 40px;
+    line-height: 1.65;
+    letter-spacing: 0.01em;
+    transition: max-width 0.15s ease;
+  }
+  #textContent p { margin: 0 0 1.3em 0; }
+  #textContent strong { color: var(--accent); }
+  .centerline {
+    position: fixed;
+    top: 50%;
+    left: 0; right: 0;
+    height: 1px;
+    background: rgba(217, 119, 87, 0.35);
+    pointer-events: none;
+    z-index: 5;
+  }
+  #wordCount {
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  ::-webkit-scrollbar { width: 0; }
+
+  /* Edit modal */
+  #editOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #editOverlay.open { display: flex; }
+  #editPanel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: min(700px, 90vw);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, Helvetica, Arial, sans-serif;
+  }
+  #editPanel h2 {
+    margin: 0;
+    padding: 16px 20px;
+    font-size: 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  #editPanel p.hint {
+    margin: 0;
+    padding: 10px 20px 0 20px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  #editTextarea {
+    flex: 1;
+    margin: 12px 20px;
+    min-height: 300px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-family: Georgia, serif;
+    font-size: 15px;
+    line-height: 1.5;
+    resize: vertical;
+  }
+  #editActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <button id="playBtn">▶ Lecture</button>
+  <button class="secondary" id="resetBtn">⟲ Début</button>
+
+  <label>Vitesse
+    <div class="stepper">
+      <button data-target="speed" data-delta="-1">−</button>
+      <input type="number" id="speedInput" value="40" min="1" max="150">
+      <button data-target="speed" data-delta="1">+</button>
+    </div>
+  </label>
+
+  <label>Taille
+    <div class="stepper">
+      <button data-target="font" data-delta="-2">−</button>
+      <input type="number" id="fontSize" value="40" min="14" max="80">
+      <button data-target="font" data-delta="2">+</button>
+    </div>
+  </label>
+
+  <label>Largeur %
+    <div class="stepper">
+      <button data-target="width" data-delta="-5">−</button>
+      <input type="number" id="widthInput" value="65" min="30" max="100">
+      <button data-target="width" data-delta="5">+</button>
+    </div>
+  </label>
+
+  <button class="secondary" id="editBtn">✎ Changer le texte</button>
+  <button class="secondary" id="hideBtn">Masquer contrôles</button>
+  <span id="wordCount"></span>
+  <span id="timer">00:00</span>
+</div>
+
+<div class="centerline"></div>
+
+<div id="scrollArea">
+  <div id="textContent">
+<p>Chargez votre texte.</p>
+
+<p>Clique sur "✎ Changer le texte" ci-dessus, colle ton discours, puis clique sur "Charger ce texte".</p>
+  </div>
+  <div style="height: 40vh;"></div>
+</div>
+
+<!-- Edit modal -->
+<div id="editOverlay">
+  <div id="editPanel">
+    <h2>Changer le texte du prompteur</h2>
+    <p class="hint">Colle ton nouveau discours ci-dessous. Une ligne vide entre les paragraphes = un nouveau paragraphe. Pour mettre un mot ou une phrase en couleur (comme "One / Two / Three"), entoure-le de doubles astérisques : **comme ça**.</p>
+    <textarea id="editTextarea"></textarea>
+    <div id="editActions">
+      <button class="secondary" id="cancelEditBtn">Annuler</button>
+      <button id="applyEditBtn">Charger ce texte</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const scrollArea = document.getElementById('scrollArea');
+  const playBtn = document.getElementById('playBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const speedInput = document.getElementById('speedInput');
+  const fontSizeInput = document.getElementById('fontSize');
+  const widthInput = document.getElementById('widthInput');
+  const hideBtn = document.getElementById('hideBtn');
+  const controls = document.getElementById('controls');
+  const textContent = document.getElementById('textContent');
+  const timerEl = document.getElementById('timer');
+  const wordCountEl = document.getElementById('wordCount');
+  const editBtn = document.getElementById('editBtn');
+  const editOverlay = document.getElementById('editOverlay');
+  const editTextarea = document.getElementById('editTextarea');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const applyEditBtn = document.getElementById('applyEditBtn');
+
+  function updateWordCount() {
+    const wc = textContent.innerText.trim().split(/\s+/).filter(Boolean).length;
+    wordCountEl.textContent = wc + ' mots';
+  }
+  updateWordCount();
+
+  let playing = false;
+  let rafId = null;
+  let startTime = null;
+  let elapsedBeforePause = 0;
+  let scrollPosition = 0;
+  let lastFrameTime = null;
+
+  function speedToPxPerSec(v) {
+    return v / 4;
+  }
+
+  function tick(now) {
+    if (!playing) return;
+    if (!startTime) { startTime = now; lastFrameTime = now; scrollPosition = scrollArea.scrollTop; }
+    const elapsedMs = now - startTime + elapsedBeforePause * 1000;
+    const totalSec = elapsedMs / 1000;
+    timerEl.textContent = formatTime(totalSec);
+
+    const deltaSec = (now - lastFrameTime) / 1000;
+    lastFrameTime = now;
+    scrollPosition += speedToPxPerSec(parseFloat(speedInput.value)) * deltaSec;
+    scrollArea.scrollTop = Math.round(scrollPosition);
+
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    return m + ':' + s;
+  }
+
+  playBtn.addEventListener('click', () => {
+    playing = !playing;
+    if (playing) {
+      playBtn.textContent = '⏸ Pause';
+      startTime = null;
+      rafId = requestAnimationFrame(tick);
+    } else {
+      playBtn.textContent = '▶ Lecture';
+      cancelAnimationFrame(rafId);
+      elapsedBeforePause += (performance.now() - startTime) / 1000;
+    }
+  });
+
+  resetBtn.addEventListener('click', () => {
+    playing = false;
+    cancelAnimationFrame(rafId);
+    scrollArea.scrollTop = 0;
+    scrollPosition = 0;
+    lastFrameTime = null;
+    elapsedBeforePause = 0;
+    startTime = null;
+    timerEl.textContent = '00:00';
+    playBtn.textContent = '▶ Lecture';
+  });
+
+  document.querySelectorAll('.stepper button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.target;
+      const delta = parseFloat(btn.dataset.delta);
+      let input, min, max;
+      if (target === 'speed') { input = speedInput; min = 1; max = 150; }
+      if (target === 'font') { input = fontSizeInput; min = 14; max = 80; }
+      if (target === 'width') { input = widthInput; min = 30; max = 100; }
+      let val = parseFloat(input.value) + delta;
+      val = Math.min(max, Math.max(min, val));
+      input.value = val;
+      input.dispatchEvent(new Event('input'));
+    });
+  });
+
+  fontSizeInput.addEventListener('input', () => {
+    textContent.style.fontSize = fontSizeInput.value + 'px';
+  });
+
+  widthInput.addEventListener('input', () => {
+    const w = widthInput.value + '%';
+    textContent.style.width = w;
+    textContent.style.maxWidth = w;
+  });
+
+  hideBtn.addEventListener('click', () => {
+    controls.classList.toggle('hidden');
+    scrollArea.classList.toggle('controls-hidden');
+  });
+
+  function htmlToEditable(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    let out = [];
+    tmp.querySelectorAll('p').forEach(p => {
+      let inner = p.innerHTML
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+        .replace(/&amp;/g, '&');
+      const div = document.createElement('div');
+      div.innerHTML = inner;
+      out.push(div.textContent);
+    });
+    return out.join('\n\n');
+  }
+
+  function editableToHtml(text) {
+    const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    return paragraphs.map(p => {
+      let escaped = p
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>\n')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      return '<p>' + escaped + '</p>';
+    }).join('\n\n');
+  }
+
+  editBtn.addEventListener('click', () => {
+    editTextarea.value = htmlToEditable(textContent.innerHTML);
+    editOverlay.classList.add('open');
+  });
+
+  cancelEditBtn.addEventListener('click', () => {
+    editOverlay.classList.remove('open');
+  });
+
+  applyEditBtn.addEventListener('click', () => {
+    const html = editableToHtml(editTextarea.value);
+    textContent.innerHTML = html;
+    editOverlay.classList.remove('open');
+    resetBtn.click();
+    updateWordCount();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (editOverlay.classList.contains('open')) {
+      if (e.code === 'Escape') editOverlay.classList.remove('open');
+      return;
+    }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      playBtn.click();
+    }
+    if (e.code === 'Escape') {
+      controls.classList.remove('hidden');
+      scrollArea.classList.remove('controls-hidden');
+    }
+  });
+</script>
+
+</body>
+</html>
