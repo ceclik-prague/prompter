@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Prompteur</title>
+<title>Teleprompter</title>
 <style>
   :root {
     --bg: #0a0a0a;
@@ -193,10 +193,10 @@
 <body>
 
 <div id="controls">
-  <button id="playBtn">▶ Lecture</button>
-  <button class="secondary" id="resetBtn">⟲ Début</button>
+  <button id="playBtn">▶ Play</button>
+  <button class="secondary" id="resetBtn">⟲ Reset</button>
 
-  <label>Vitesse
+  <label>Speed
     <div class="stepper">
       <button data-target="speed" data-delta="-1">−</button>
       <input type="number" id="speedInput" value="40" min="1" max="150">
@@ -204,7 +204,7 @@
     </div>
   </label>
 
-  <label>Taille
+  <label>Size
     <div class="stepper">
       <button data-target="font" data-delta="-2">−</button>
       <input type="number" id="fontSize" value="40" min="14" max="80">
@@ -212,7 +212,7 @@
     </div>
   </label>
 
-  <label>Largeur %
+  <label>Width %
     <div class="stepper">
       <button data-target="width" data-delta="-5">−</button>
       <input type="number" id="widthInput" value="65" min="30" max="100">
@@ -220,8 +220,8 @@
     </div>
   </label>
 
-  <button class="secondary" id="editBtn">✎ Changer le texte</button>
-  <button class="secondary" id="hideBtn">Masquer contrôles</button>
+  <button class="secondary" id="editBtn">✎ Edit text</button>
+  <button class="secondary" id="hideBtn">Hide controls</button>
   <span id="wordCount"></span>
   <span id="timer">00:00</span>
 </div>
@@ -230,9 +230,9 @@
 
 <div id="scrollArea">
   <div id="textContent">
-<p>Chargez votre texte.</p>
+<p>Load your text.</p>
 
-<p>Clique sur "✎ Changer le texte" ci-dessus, colle ton discours, puis clique sur "Charger ce texte".</p>
+<p>Click "✎ Edit text" above, paste your speech, then click "Load this text".</p>
   </div>
   <div style="height: 40vh;"></div>
 </div>
@@ -240,12 +240,12 @@
 <!-- Edit modal -->
 <div id="editOverlay">
   <div id="editPanel">
-    <h2>Changer le texte du prompteur</h2>
-    <p class="hint">Colle ton nouveau discours ci-dessous. Une ligne vide entre les paragraphes = un nouveau paragraphe. Pour mettre un mot ou une phrase en couleur (comme "One / Two / Three"), entoure-le de doubles astérisques : **comme ça**.</p>
+    <h2>Edit the teleprompter text</h2>
+    <p class="hint">Paste your new speech below. A blank line between paragraphs = a new paragraph. To highlight a word or phrase in color (like "One / Two / Three"), wrap it in double asterisks: **like this**.</p>
     <textarea id="editTextarea"></textarea>
     <div id="editActions">
-      <button class="secondary" id="cancelEditBtn">Annuler</button>
-      <button id="applyEditBtn">Charger ce texte</button>
+      <button class="secondary" id="cancelEditBtn">Cancel</button>
+      <button id="applyEditBtn">Load this text</button>
     </div>
   </div>
 </div>
@@ -270,7 +270,7 @@
 
   function updateWordCount() {
     const wc = textContent.innerText.trim().split(/\s+/).filter(Boolean).length;
-    wordCountEl.textContent = wc + ' mots';
+    wordCountEl.textContent = wc + ' words';
   }
   updateWordCount();
 
@@ -313,7 +313,7 @@
       startTime = null;
       rafId = requestAnimationFrame(tick);
     } else {
-      playBtn.textContent = '▶ Lecture';
+      playBtn.textContent = '▶ Play';
       cancelAnimationFrame(rafId);
       elapsedBeforePause += (performance.now() - startTime) / 1000;
     }
@@ -328,7 +328,7 @@
     elapsedBeforePause = 0;
     startTime = null;
     timerEl.textContent = '00:00';
-    playBtn.textContent = '▶ Lecture';
+    playBtn.textContent = '▶ Play';
   });
 
   document.querySelectorAll('.stepper button').forEach(btn => {
